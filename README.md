@@ -69,7 +69,7 @@ npm run build      # production build
 ### Not yet implemented (planned for future phases)
 
 - **Phase 2 — Enhanced config**: multiple output formats (table, grouped), sort by frequency, tag filtering, hierarchical display for nested tags
-- **Phase 3 — Automation**: auto-update on vault changes (file save/create/delete/rename), timed updates, incremental updates
+- **Phase 3 — Automation**: auto-update on vault changes (file save/create/delete/rename), timed updates, optional incremental updates (see "Architecture notes")
 - **Phase 4 — Advanced**: tag usage statistics, tag co-occurrence graph, tag suggestions, multi-file index support
 
 ### Explicitly out of scope
@@ -81,3 +81,19 @@ npm run build      # production build
 ## API Documentation
 
 See https://docs.obsidian.md
+
+## Architecture notes
+
+This plugin currently uses a simple, predictable architecture:
+
+- **On-demand full scan**: when you run "Update tag index", the plugin scans all Markdown files in the vault (using `metadataCache` + `getAllTags()`), generates the index, and writes it to the target file.
+- **Why this approach**: it is easy to understand, avoids background work, and minimizes side effects (sync churn, Git noise, and plugin-to-plugin event amplification).
+
+For large vaults or very frequent updates, a future automation phase may introduce an **incremental index** architecture:
+
+- **B1 (incremental cache, manual write)**: maintain an in-memory cache of `file -> tags` updated via Obsidian events, but only write the index file when the user runs the command.
+  - Pros: near-instant command runs; minimal write/sync side effects.
+  - Cons: more complexity (event ordering, cache readiness, recovery paths).
+- **B2 (incremental cache, auto-write)**: same cache as B1, plus auto-writing the index file with debounce.
+  - Pros: index stays up-to-date with minimal user effort.
+  - Cons: higher risk of sync conflicts (multi-device), frequent writes, and more "background" behavior that can surprise users.

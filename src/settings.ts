@@ -11,10 +11,22 @@ export const DEFAULT_SETTINGS: TagIndexSettings = {
 
 export class TagsInOnePlaceSettingTab extends PluginSettingTab {
 	plugin: TagsInOnePlacePlugin;
+	private saveTimeoutId: number | null = null;
 
 	constructor(app: App, plugin: TagsInOnePlacePlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	private scheduleSave(): void {
+		if (this.saveTimeoutId !== null) {
+			window.clearTimeout(this.saveTimeoutId);
+		}
+
+		this.saveTimeoutId = window.setTimeout(() => {
+			this.saveTimeoutId = null;
+			void this.plugin.saveSettings().catch((error) => console.error("Failed to save settings:", error));
+		}, 400);
 	}
 
 	display(): void {
@@ -28,9 +40,9 @@ export class TagsInOnePlaceSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder("Tags.md")
 					.setValue(this.plugin.settings.targetFilePath)
-					.onChange(async (value) => {
+					.onChange((value) => {
 						this.plugin.settings.targetFilePath = value;
-						await this.plugin.saveSettings();
+						this.scheduleSave();
 					})
 			);
 	}

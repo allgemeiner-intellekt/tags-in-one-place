@@ -1,22 +1,82 @@
-import { App, getAllTags } from "obsidian";
+import { App, getAllTags, normalizePath } from "obsidian";
+
+export interface TagCollectorOptions {
+	excludePaths?: string[];
+	/**
+	 * Batch size for chunked processing. After each batch, we yield to the event
+	 * loop to keep the UI responsive in large vaults.
+	 */
+	batchSize?: number;
+	onProgress?: (progress: TagCollectProgress) => void;
+}
+
+export interface TagCollectProgress {
+	processedFiles: number;
+	totalFiles: number;
+}
+
+export interface TagCollectResult {
+	tags: string[];
+	totalFiles: number;
+	processedFiles: number;
+	excludedFiles: number;
+	filesWithCache: number;
+}
 
 export class TagCollector {
 	constructor(private app: App) {}
 
-	collectAllTags(): string[] {
+	async collectAllTags(options: TagCollectorOptions = {}): Promise<TagCollectResult> {
 		const files = this.app.vault.getMarkdownFiles();
+		const excludePaths = new Set(
+			(options.excludePaths ?? [])
+				.map((path) => path.trim())
+				.filter((path) => path.length > 0)
+				.map((path) => normalizePath(path))
+		);
 		const tagSet = new Set<string>();
 
+		const totalFiles = files.length;
+		const batchSize = Math.max(1, options.batchSize ?? 250);
+
+		let excludedFiles = 0;
+		let filesWithCache = 0;
+		let processedFiles = 0;
+
 		for (const file of files) {
+			processedFiles++;
+			if (excludePaths.has(file.path)) {
+				excludedFiles++;
+				continue;
+			}
+
 			const cache = this.app.metadataCache.getFileCache(file);
 			if (cache) {
+				filesWithCache++;
 				const tags = getAllTags(cache);
 				if (tags) {
 					tags.forEach((tag) => tagSet.add(tag));
 				}
 			}
+
+			if (processedFiles % batchSize === 0) {
+				options.onProgress?.({ processedFiles, totalFiles });
+				await yieldToNextFrame();
+			}
 		}
 
-		return Array.from(tagSet).sort();
+		options.onProgress?.({ processedFiles, totalFiles });
+
+		return {
+			tags: Array.from(tagSet).sort(),
+			totalFiles,
+			processedFiles,
+			excludedFiles,
+			filesWithCache,
+		};
 	}
+}
+
+function yieldToNextFrame(): Promise<void> {
+	return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
