@@ -1,36 +1,37 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
-import MyPlugin from "./main";
+import { App, PluginSettingTab, Setting } from "obsidian";
+import type TagsInOnePlacePlugin from "./main";
 
-export interface MyPluginSettings {
-	mySetting: string;
+export interface TagIndexSettings {
+	targetFilePath: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+export const DEFAULT_SETTINGS: TagIndexSettings = {
+	targetFilePath: "Tags.md",
+};
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class TagsInOnePlaceSettingTab extends PluginSettingTab {
+	plugin: TagsInOnePlacePlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: TagsInOnePlacePlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
-		const {containerEl} = this;
-
+		const { containerEl } = this;
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName("Target file path")
+			.setDesc("Path to the tag index file (e.g., Tags.md or Index/Tags.md)")
+			.addText((text) =>
+				text
+					.setPlaceholder("Tags.md")
+					.setValue(this.plugin.settings.targetFilePath)
+					.onChange(async (value) => {
+						this.plugin.settings.targetFilePath = value;
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 }
