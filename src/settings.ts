@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type TagsInOnePlacePlugin from "./main";
+import { resolveTargetFilePath } from "./path-utils";
 
 export interface TagIndexSettings {
 	targetFilePath: string;
@@ -33,17 +34,33 @@ export class TagsInOnePlaceSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl)
+		const targetSetting = new Setting(containerEl)
 			.setName("Target file path")
-			.setDesc("Path to the tag index file (e.g., Tags.md or Index/Tags.md)")
-			.addText((text) =>
-				text
-					.setPlaceholder("Tags.md")
-					.setValue(this.plugin.settings.targetFilePath)
-					.onChange((value) => {
-						this.plugin.settings.targetFilePath = value;
-						this.scheduleSave();
-					})
-			);
+			.setDesc("Vault-relative output file path (e.g., Tags or Index/Tags). If you omit an extension, .md is appended.");
+
+		const statusEl = document.createElement("div");
+		targetSetting.descEl.appendChild(statusEl);
+
+		function updateTargetStatus(rawValue: string): void {
+			const resolved = resolveTargetFilePath(rawValue, DEFAULT_SETTINGS.targetFilePath);
+			if (resolved.ok) {
+				statusEl.textContent = `Resolved path: ${resolved.path}`;
+			} else {
+				statusEl.textContent = `Invalid path: ${resolved.error}`;
+			}
+		}
+
+		targetSetting.addText((text) =>
+			text
+				.setPlaceholder("Tags")
+				.setValue(this.plugin.settings.targetFilePath)
+				.onChange((value) => {
+					this.plugin.settings.targetFilePath = value;
+					updateTargetStatus(value);
+					this.scheduleSave();
+				})
+		);
+
+		updateTargetStatus(this.plugin.settings.targetFilePath);
 	}
 }

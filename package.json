@@ -1,7 +1,8 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "tags-in-one-place",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Collects all tags from your vault and writes them to a single Markdown file.",
+	"private": true,
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

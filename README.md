@@ -8,6 +8,8 @@ An Obsidian plugin that collects all tags from your vault and writes them to a s
 - **Single index file**: Writes all unique tags (sorted alphabetically) into one Markdown file (default: `Tags.md`)
 - **Manual update**: Trigger via command palette — "Update tag index"
 - **Configurable output path**: Change the target file in **Settings → Tags in One Place**
+  - Path must be vault-relative (e.g., `Tags` or `Index/Tags`)
+  - If you omit an extension, `.md` is appended automatically
 - **Auto-create**: If the target file (or parent folders) doesn't exist, it will be created automatically
 
 ## Usage

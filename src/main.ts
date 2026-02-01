@@ -1,9 +1,10 @@
-import { Notice, normalizePath, Plugin } from "obsidian";
+import { Notice, Plugin } from "obsidian";
 import { DEFAULT_SETTINGS, TagIndexSettings, TagsInOnePlaceSettingTab } from "./settings";
 import type { TagCollectProgress } from "./tag-collector";
 import { TagCollector } from "./tag-collector";
 import { FileWriteResult, FileWriter } from "./file-writer";
 import { Formatter } from "./formatter";
+import { resolveTargetFilePath } from "./path-utils";
 
 export default class TagsInOnePlacePlugin extends Plugin {
 	settings: TagIndexSettings;
@@ -72,8 +73,14 @@ export default class TagsInOnePlacePlugin extends Plugin {
 		elapsedSeconds: string,
 		collectionStats: { totalFiles: number; excludedFiles: number; filesWithCache: number }
 	): string {
-		const missingCache = collectionStats.totalFiles - collectionStats.excludedFiles - collectionStats.filesWithCache;
-		const cacheNote = missingCache > 0 ? ` (cache missing for ${missingCache} files)` : "";
+		const scannedFiles = collectionStats.totalFiles - collectionStats.excludedFiles;
+		const missingCache = Math.max(0, scannedFiles - collectionStats.filesWithCache);
+		const missingRatio = scannedFiles > 0 ? missingCache / scannedFiles : 0;
+		const suggestRetry = missingCache >= 50 || missingRatio >= 0.1;
+		const cacheNote =
+			missingCache > 0
+				? ` (cache missing for ${missingCache} files${suggestRetry ? "; try running again in a moment" : ""})`
+				: "";
 
 		if (writeResult === "skipped") {
 			return `Tag index is already up to date (${tagCount} tags, ${elapsedSeconds}s)${cacheNote}.`;
@@ -111,9 +118,11 @@ export default class TagsInOnePlacePlugin extends Plugin {
 	}
 
 	private getTargetPath(): string {
-		const configuredPath = typeof this.settings.targetFilePath === "string" ? this.settings.targetFilePath.trim() : "";
-		const rawPath = configuredPath || DEFAULT_SETTINGS.targetFilePath;
-		return normalizePath(rawPath);
+		const resolved = resolveTargetFilePath(this.settings.targetFilePath, DEFAULT_SETTINGS.targetFilePath);
+		if (!resolved.ok) {
+			throw new Error(resolved.error);
+		}
+		return resolved.path;
 	}
 
 	async loadSettings(): Promise<void> {
