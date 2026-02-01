@@ -57,7 +57,7 @@ npm run dev        # watch mode (auto-recompile on save)
 npm run build      # production build
 ```
 
-## Current status (v1.0.0 — MVP)
+## Current status (v1.1.0)
 
 ### Implemented
 
@@ -65,6 +65,7 @@ npm run build      # production build
 - Write tag index to a configurable Markdown file
 - Command palette command: "Update tag index"
 - Settings tab with target file path configuration
+- Exclude one or more folders from scanning (recursive)
 - Auto-create target file and parent folders
 - Success/failure notifications via Obsidian Notice
 - Error handling (folder-as-target, missing files, etc.)
