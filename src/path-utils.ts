@@ -5,6 +5,60 @@ export type TargetPathResolution =
 	| { ok: false; error: string };
 
 /**
+ * Normalize a vault-relative folder path.
+ *
+ * Returns null when the value is empty, points to the vault root, or looks like
+ * an absolute path / URL / drive path.
+ */
+export function normalizeVaultFolderPath(rawValue: unknown): string | null {
+	if (typeof rawValue !== "string") {
+		return null;
+	}
+
+	const trimmed = rawValue.trim();
+	if (trimmed.length === 0) {
+		return null;
+	}
+
+	const replacedSlashes = trimmed.replace(/\\/g, "/");
+
+	// Reject absolute paths / URLs (Obsidian vault paths are always relative).
+	if (replacedSlashes.startsWith("/")) {
+		return null;
+	}
+	if (/^[A-Za-z]:[\\/]/.test(trimmed) || /^[A-Za-z]:\//.test(replacedSlashes)) {
+		return null;
+	}
+	if (replacedSlashes.includes("://")) {
+		return null;
+	}
+
+	// Remove trailing slashes so folders are represented consistently.
+	const withoutTrailingSlash = replacedSlashes.replace(/\/+$/, "");
+	if (withoutTrailingSlash.length === 0) {
+		return null;
+	}
+
+	// Reject `..` to avoid vault escape / confusing normalization.
+	const rawSegments = withoutTrailingSlash.split("/").filter((segment) => segment.length > 0);
+	if (rawSegments.some((segment) => segment === "..")) {
+		return null;
+	}
+
+	const normalized = normalizePath(withoutTrailingSlash);
+	if (normalized.length === 0) {
+		return null;
+	}
+
+	// Disallow vault root (TFolder path is "", but users shouldn't store that).
+	if (normalized === "." || normalized === "/") {
+		return null;
+	}
+
+	return normalized;
+}
+
+/**
  * Resolve the user-configured target file path into a normalized, vault-relative
  * markdown file path.
  *
@@ -69,4 +123,3 @@ export function resolveTargetFilePath(rawValue: unknown, fallbackValue: string):
 
 	return { ok: true, path: normalized, didAppendMd: false };
 }
-

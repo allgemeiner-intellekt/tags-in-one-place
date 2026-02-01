@@ -4,7 +4,7 @@ import type { TagCollectProgress } from "./tag-collector";
 import { TagCollector } from "./tag-collector";
 import { FileWriteResult, FileWriter } from "./file-writer";
 import { Formatter } from "./formatter";
-import { resolveTargetFilePath } from "./path-utils";
+import { normalizeVaultFolderPath, resolveTargetFilePath } from "./path-utils";
 
 export default class TagsInOnePlacePlugin extends Plugin {
 	settings: TagIndexSettings;
@@ -103,6 +103,7 @@ export default class TagsInOnePlacePlugin extends Plugin {
 		const targetPath = this.getTargetPath();
 		const collection = await this.tagCollector.collectAllTags({
 			excludePaths: [targetPath],
+			excludeFolderPaths: this.settings.excludedFolderPaths,
 			onProgress: options.onProgress,
 		});
 
@@ -137,9 +138,29 @@ export default class TagsInOnePlacePlugin extends Plugin {
 			return typeof value === "string" ? value : DEFAULT_SETTINGS.targetFilePath;
 		})();
 
+		const excludedFolderPaths = (() => {
+			if (!data || typeof data !== "object") {
+				return DEFAULT_SETTINGS.excludedFolderPaths;
+			}
+
+			const record = data as Record<string, unknown>;
+			const value = record.excludedFolderPaths;
+			if (!Array.isArray(value)) {
+				return DEFAULT_SETTINGS.excludedFolderPaths;
+			}
+
+			const normalized = value
+				.filter((item): item is string => typeof item === "string")
+				.map((path) => normalizeVaultFolderPath(path))
+				.filter((path): path is string => Boolean(path));
+
+			return Array.from(new Set(normalized)).sort((a, b) => a.localeCompare(b));
+		})();
+
 		this.settings = {
 			...DEFAULT_SETTINGS,
 			targetFilePath,
+			excludedFolderPaths,
 		};
 	}
 

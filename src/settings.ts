@@ -1,13 +1,15 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, TFolder } from "obsidian";
 import type TagsInOnePlacePlugin from "./main";
-import { resolveTargetFilePath } from "./path-utils";
+import { normalizeVaultFolderPath, resolveTargetFilePath } from "./path-utils";
 
 export interface TagIndexSettings {
 	targetFilePath: string;
+	excludedFolderPaths: string[];
 }
 
 export const DEFAULT_SETTINGS: TagIndexSettings = {
 	targetFilePath: "Tags.md",
+	excludedFolderPaths: [],
 };
 
 export class TagsInOnePlaceSettingTab extends PluginSettingTab {
@@ -62,5 +64,71 @@ export class TagsInOnePlaceSettingTab extends PluginSettingTab {
 		);
 
 		updateTargetStatus(this.plugin.settings.targetFilePath);
+
+		new Setting(containerEl).setName("Exclude folders").setHeading();
+
+		const allFolderPaths = this.app.vault
+			.getAllLoadedFiles()
+			.filter((file): file is TFolder => file instanceof TFolder)
+			.map((folder) => folder.path)
+			.filter((path) => path.length > 0)
+			.sort((a, b) => a.localeCompare(b));
+
+		const excludedSet = new Set(this.plugin.settings.excludedFolderPaths);
+		const hasAvailableFolder = allFolderPaths.some((path) => !excludedSet.has(path));
+		const firstAvailable = allFolderPaths.find((path) => !excludedSet.has(path)) ?? "";
+		let selectedFolderPath = firstAvailable;
+
+		const addExcludedFolderSetting = new Setting(containerEl)
+			.setName("Add excluded folder")
+			.setDesc("Choose a folder to exclude from scanning.");
+
+		addExcludedFolderSetting.addDropdown((dropdown) => {
+			dropdown.addOption("", allFolderPaths.length > 0 ? "Select a folder..." : "No folders found");
+			for (const path of allFolderPaths) {
+				dropdown.addOption(path, path);
+			}
+
+			dropdown.setValue(selectedFolderPath.length > 0 ? selectedFolderPath : "");
+			dropdown.onChange((value) => {
+				selectedFolderPath = value;
+			});
+		});
+
+		addExcludedFolderSetting.addButton((button) => {
+			button
+				.setButtonText("Add")
+				.setDisabled(allFolderPaths.length === 0 || !hasAvailableFolder)
+				.onClick(() => {
+					const normalized = normalizeVaultFolderPath(selectedFolderPath);
+					if (!normalized) {
+						return;
+					}
+					if (this.plugin.settings.excludedFolderPaths.includes(normalized)) {
+						return;
+					}
+
+					this.plugin.settings.excludedFolderPaths = [...this.plugin.settings.excludedFolderPaths, normalized].sort((a, b) =>
+						a.localeCompare(b)
+					);
+					this.scheduleSave();
+					this.display();
+				});
+		});
+
+		if (this.plugin.settings.excludedFolderPaths.length === 0) {
+			new Setting(containerEl).setDesc("No excluded folders.");
+		}
+
+		for (const folderPath of this.plugin.settings.excludedFolderPaths) {
+			const row = new Setting(containerEl).setName(folderPath);
+			row.addExtraButton((button) => {
+				button.setIcon("cross").setTooltip("Remove").onClick(() => {
+					this.plugin.settings.excludedFolderPaths = this.plugin.settings.excludedFolderPaths.filter((p) => p !== folderPath);
+					this.scheduleSave();
+					this.display();
+				});
+			});
+		}
 	}
 }

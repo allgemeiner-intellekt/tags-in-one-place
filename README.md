@@ -10,6 +10,7 @@ An Obsidian plugin that collects all tags from your vault and writes them to a s
 - **Configurable output path**: Change the target file in **Settings → Tags in One Place**
   - Path must be vault-relative (e.g., `Tags` or `Index/Tags`)
   - If you omit an extension, `.md` is appended automatically
+- **Folder exclusions**: Exclude one or more folders from scanning (recursive)
 - **Auto-create**: If the target file (or parent folders) doesn't exist, it will be created automatically
 
 ## Usage
