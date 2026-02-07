@@ -1,7 +1,7 @@
 {
 	"id": "tags-in-one-place",
 	"name": "Tags in One Place",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"minAppVersion": "1.0.0",
 	"description": "Collects all tags from your vault and writes them to a single Markdown file.",
 	"author": "yuhanli",

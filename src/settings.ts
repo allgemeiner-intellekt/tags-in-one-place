@@ -75,17 +75,36 @@ export class TagsInOnePlaceSettingTab extends PluginSettingTab {
 			.sort((a, b) => a.localeCompare(b));
 
 		const excludedSet = new Set(this.plugin.settings.excludedFolderPaths);
-		const hasAvailableFolder = allFolderPaths.some((path) => !excludedSet.has(path));
-		const firstAvailable = allFolderPaths.find((path) => !excludedSet.has(path)) ?? "";
-		let selectedFolderPath = firstAvailable;
+		const excludedPrefixes = this.plugin.settings.excludedFolderPaths
+			.map((path) => path.replace(/\\/g, "/").replace(/\/+$/, ""))
+			.filter((path) => path.length > 0)
+			.map((path) => `${path}/`);
+		function isCoveredByExcludedFolder(path: string): boolean {
+			// Exact match.
+			if (excludedSet.has(path)) {
+				return true;
+			}
+			// Covered by a parent folder exclusion, e.g. excluding `A` should also exclude `A/B`.
+			return excludedPrefixes.some((prefix) => path.startsWith(prefix));
+		}
+
+		const availableFolderPaths = allFolderPaths.filter((path) => !isCoveredByExcludedFolder(path));
+		const hasAvailableFolder = availableFolderPaths.length > 0;
+		let selectedFolderPath = availableFolderPaths[0] ?? "";
+
+		new Setting(containerEl).setDesc(
+			`Excluded: ${this.plugin.settings.excludedFolderPaths.length}. Available: ${availableFolderPaths.length}. Total folders: ${allFolderPaths.length}.`
+		);
 
 		const addExcludedFolderSetting = new Setting(containerEl)
 			.setName("Add excluded folder")
 			.setDesc("Choose a folder to exclude from scanning.");
 
 		addExcludedFolderSetting.addDropdown((dropdown) => {
-			dropdown.addOption("", allFolderPaths.length > 0 ? "Select a folder..." : "No folders found");
-			for (const path of allFolderPaths) {
+			const placeholder =
+				allFolderPaths.length === 0 ? "No folders found" : hasAvailableFolder ? "Select a folder..." : "All folders are excluded";
+			dropdown.addOption("", placeholder);
+			for (const path of availableFolderPaths) {
 				dropdown.addOption(path, path);
 			}
 
@@ -98,7 +117,7 @@ export class TagsInOnePlaceSettingTab extends PluginSettingTab {
 		addExcludedFolderSetting.addButton((button) => {
 			button
 				.setButtonText("Add")
-				.setDisabled(allFolderPaths.length === 0 || !hasAvailableFolder)
+				.setDisabled(!hasAvailableFolder)
 				.onClick(() => {
 					const normalized = normalizeVaultFolderPath(selectedFolderPath);
 					if (!normalized) {
