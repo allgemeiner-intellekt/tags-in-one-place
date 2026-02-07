@@ -11,6 +11,8 @@ An Obsidian plugin that collects all tags from your vault and writes them to a s
   - Path must be vault-relative (e.g., `Tags` or `Index/Tags`)
   - If you omit an extension, `.md` is appended automatically
 - **Folder exclusions**: Exclude one or more folders from scanning (recursive)
+  - Exclusions apply to all subfolders
+  - The "Add excluded folder" picker only shows folders that aren't already excluded (or covered by a parent exclusion)
 - **Auto-create**: If the target file (or parent folders) doesn't exist, it will be created automatically
 
 ## Usage
@@ -57,7 +59,7 @@ npm run dev        # watch mode (auto-recompile on save)
 npm run build      # production build
 ```
 
-## Current status (v1.1.0)
+## Current status (v1.1.1)
 
 ### Implemented
 
